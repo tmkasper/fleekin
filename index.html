@@ -4,29 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Каталог Кроссовок</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Подключаем Telegram API -->
+    <script src="https://telegram.org"></script>
     <style>
-        body { font-family: sans-serif; background: #f5f5f5; padding: 15px; margin: 0; }
-        .card { background: #fff; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .title { font-weight: bold; font-size: 18px; }
-        .price { color: #e44d26; font-size: 16px; margin: 5px 0; }
-        .sizes { margin: 10px 0; }
-        .size-btn { padding: 5px 10px; margin-right: 5px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
+        body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f5f5; padding: 15px; margin: 0; }
+        .card { background: #fff; padding: 15px; border-radius: 12px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .title { font-weight: bold; font-size: 18px; color: #222; }
+        .price { color: #e44d26; font-size: 16px; font-weight: bold; margin: 5px 0; }
+        .sizes { margin: 12px 0; font-size: 14px; color: #666; }
+        .size-options { display: flex; gap: 8px; margin-top: 5px; }
+        .size-btn { padding: 6px 12px; border: 1px solid #ccc; background: #fff; border-radius: 6px; cursor: pointer; }
         .size-btn.active { background: #0088cc; color: #fff; border-color: #0088cc; }
-        .btn { background: #0088cc; color: #fff; border: none; padding: 10px; width: 100%; border-radius: 5px; font-weight: bold; cursor: pointer; }
-        .form-group { margin-top: 15px; }
-        input { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; }
+        .btn { background: #0088cc; color: #fff; border: none; padding: 12px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; }
+        .form-group { margin-top: 12px; }
+        input { width: 100%; padding: 11px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; outline: none; }
         .order-btn { background: #4caf50; margin-top: 15px; }
     </style>
 </head>
 <body>
 
-    <h2>Каталог</h2>
+    <h2 style="font-size: 20px; margin-bottom: 15px;">Каталог кроссовок</h2>
     <div id="catalog"></div>
 
     <div class="card" id="cart-section" style="display:none;">
-        <h3>Оформление заказа</h3>
-        <p id="cart-info"></p>
+        <h3 style="margin-top:0;">Оформление заказа</h3>
+        <p id="cart-info" style="font-size: 15px; color: #333; background: #f9f9f9; padding: 10px; border-radius: 6px;"></p>
         <div class="form-group">
             <input type="text" id="name" placeholder="Ваше имя">
         </div>
@@ -36,14 +38,15 @@
         <div class="form-group">
             <input type="text" id="address" placeholder="Адрес доставки">
         </div>
-        <button class="btn order-btn" onclick="sendOrder()">Отправить заказ</button>
+        <button class="btn order-btn" onclick="sendOrder()">Отправить заказ в чат</button>
     </div>
 
     <script>
+        // Инициализируем Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // База данных товаров (Массив размеров исправлен)
+        // Данные товаров с прописанными размерами (исправлено!)
         const products = [
             { id: 1, name: "Nike Air Force 1", price: 12900, sizes: [40, 41, 42, 43] },
             { id: 2, name: "Adidas Sneakers", price: 10500, sizes: [39, 40, 41, 42] }
@@ -52,22 +55,27 @@
         let selectedProduct = null;
         let selectedSize = null;
 
+        // Рисуем карточки
         const container = document.getElementById('catalog');
         products.forEach(p => {
             const div = document.createElement('div');
             div.className = 'card';
             div.innerHTML = `
                 <div class="title">${p.name}</div>
-                <div class="price">${p.price} ₽</div>
-                <div class="sizes">Размеры: 
-                    ${p.sizes.map(s => `<button class="size-btn" onclick="selectSize(${p.id}, ${s}, this)">${s}</button>`).join('')}
+                <div class="price">${p.price.toLocaleString()} ₽</div>
+                <div class="sizes">
+                    Выберите размер:
+                    <div class="size-options">
+                        ${p.sizes.map(s => `<button class="size-btn" data-product="${p.id}" onclick="selectSize(${p.id}, ${s}, this)">${s}</button>`).join('')}
+                    </div>
                 </div>
-                <button class="btn" onclick="buy(${p.id})">Выбрать</button>
+                <button class="btn" onclick="buy(${p.id})">Оформить эту модель</button>
             `;
             container.appendChild(div);
         });
 
         function selectSize(productId, size, btn) {
+            // Снимаем выделение только с кнопок текущей карточки
             const parent = btn.parentElement;
             parent.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
@@ -76,12 +84,15 @@
 
         function buy(productId) {
             if (!selectedSize) {
-                alert("Выберите размер!");
+                alert("Пожалуйста, сначала выберите размер ноги!");
                 return;
             }
             selectedProduct = products.find(p => p.id === productId);
             document.getElementById('cart-section').style.display = 'block';
-            document.getElementById('cart-info').innerText = `Выбрано: ${selectedProduct.name}, Размер: ${selectedSize}, Цена: ${selectedProduct.price} ₽`;
+            document.getElementById('cart-info').innerHTML = `👟 <b>${selectedProduct.name}</b><br>📏 Размер: ${selectedSize}<br>💰 Цена: ${selectedProduct.price.toLocaleString()} ₽`;
+            
+            // Плавный скролл к форме
+            document.getElementById('cart-section').scrollIntoView({ behavior: 'smooth' });
         }
 
         function sendOrder() {
@@ -90,10 +101,11 @@
             const address = document.getElementById('address').value.trim();
 
             if (!name || !phone || !address) {
-                alert("Заполните форму доставки!");
+                alert("Пожалуйста, заполните имя, телефон и адрес!");
                 return;
             }
 
+            // Формируем JSON объект для вашего bot.py
             const data = {
                 product: selectedProduct.name,
                 size: selectedSize,
@@ -103,7 +115,7 @@
                 customer_address: address
             };
 
-            // Отправка данных боту
+            // Отправляем данные в aiogram бэкенд
             tg.sendData(JSON.stringify(data));
             tg.close();
         }
