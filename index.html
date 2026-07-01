@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кроссовки Каталог</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f4; }
+        .product { border: 1px solid #ddd; margin: 10px; padding: 10px; background: white; border-radius: 8px; }
+        .product img { width: 100%; max-height: 200px; object-fit: cover; }
+        .sizes { display: flex; flex-wrap: wrap; gap: 5px; }
+        .size-btn { padding: 5px 10px; border: 1px solid #ccc; cursor: pointer; border-radius: 4px; }
+        .selected { background: #007bff; color: white; }
+        .cart { position: fixed; bottom: 20px; right: 20px; background: #28a745; color: white; padding: 15px; border-radius: 50%; font-size: 24px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 999; }
+        #cart-items { max-height: 400px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center; padding: 10px;">Каталог Кроссовок</h1>
+    <div id="products"></div>
+    
+    <!-- Корзина -->
+    <div id="cart-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000;">
+        <div style="background: white; margin: 40px auto; width: 90%; max-width: 600px; padding: 20px; border-radius: 12px; max-height: 80vh; overflow-y: auto;">
+            <h2>Корзина</h2>
+            <div id="cart-items"></div>
+            <button onclick="showForm()" style="background:#28a745;color:white;padding:10px 20px;margin:10px;">Оформить заказ</button>
+            <button onclick="closeCart()">Закрыть</button>
+        </div>
+    </div>
+
+    <!-- Форма заказа -->
+    <div id="order-form" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000;">
+        <div style="background: white; margin: 40px auto; width: 90%; max-width: 400px; padding: 20px; border-radius: 12px;">
+            <h2>Оформление заказа</h2>
+            <input type="text" id="name" placeholder="Имя *" style="width:100%;padding:8px;margin:5px 0;" required><br>
+            <input type="text" id="address" placeholder="Адрес доставки *" style="width:100%;padding:8px;margin:5px 0;" required><br>
+            <input type="tel" id="phone" placeholder="Телефон *" style="width:100%;padding:8px;margin:5px 0;" required><br>
+            <input type="text" id="telegram" placeholder="Telegram username" style="width:100%;padding:8px;margin:5px 0;"><br>
+            <textarea id="comments" placeholder="Комментарии" style="width:100%;height:80px;padding:8px;margin:5px 0;"></textarea><br>
+            <button onclick="submitOrder()" style="background:#007bff;color:white;padding:12px 20px;margin:5px;">Отправить заказ</button>
+            <button onclick="closeForm()">Отмена</button>
+        </div>
+    </div>
+
+    <div class="cart" onclick="showCart()">🛒 <span id="cart-count">0</span></div>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script>
+        let cart = [];
+        const products = [
+            { id: 1, name: "Nike Air Max", image: "https://picsum.photos/id/20/400/250", price: 5990 },
+            { id: 2, name: "Adidas Stan Smith", image: "https://picsum.photos/id/21/400/250", price: 4990 },
+            // Добавляй свои товары здесь
+        ];
+
+        let selectedSizes = {};
+
+        function renderProducts() {
+            const container = document.getElementById('products');
+            container.innerHTML = '';
+            products.forEach(product => {
+                const div = document.createElement('div');
+                div.className = 'product';
+                div.innerHTML = `
+                    <img src="${product.image}" alt="${product.name}">
+                    <h3>${product.name}</h3>
+                    <p><strong>${product.price} ₽</strong></p>
+                    <div class="sizes" id="sizes-${product.id}"></div>
+                    <button onclick="addToCart(${product.id})" style="margin-top:10px;padding:10px;width:100%;background:#007bff;color:white;border:none;border-radius:6px;">Добавить в корзину</button>
+                `;
+                container.appendChild(div);
+
+                const sizesDiv = document.getElementById(`sizes-${product.id}`);
+                for (let size = 36; size <= 45; size++) {
+                    const btn = document.createElement('button');
+                    btn.className = 'size-btn';
+                    btn.textContent = size;
+                    btn.onclick = () => toggleSize(product.id, size, btn);
+                    sizesDiv.appendChild(btn);
+                }
+            });
+        }
+
+        function toggleSize(productId, size, btn) {
+            if (!selectedSizes[productId]) selectedSizes[productId] = [];
+            if (selectedSizes[productId].includes(size)) {
+                selectedSizes[productId] = selectedSizes[productId].filter(s => s !== size);
+                btn.classList.remove('selected');
+            } else {
+                selectedSizes[productId].push(size);
+                btn.classList.add('selected');
+            }
+        }
+
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            const sizes = selectedSizes[productId] || [];
+            if (sizes.length === 0) return alert('Выберите хотя бы один размер!');
+            
+            cart.push({ ...product, sizes: [...sizes], quantity: 1 });
+            updateCartCount();
+            alert('✅ Добавлено в корзину!');
+            selectedSizes[productId] = [];
+        }
+
+        function updateCartCount() {
+            document.getElementById('cart-count').textContent = cart.length;
+        }
+
+        function showCart() {
+            if (cart.length === 0) return alert('Корзина пуста');
+            // ... (полный код корзины есть в файле выше)
+            const modal = document.getElementById('cart-modal');
+            const itemsDiv = document.getElementById('cart-items');
+            itemsDiv.innerHTML = cart.map((item, i) => `
+                <div style="border-bottom:1px solid #eee;padding:10px 0;">
+                    ${item.name} — ${item.sizes.join(', ')}<br>
+                    <button onclick="removeFromCart(${i})" style="color:red;">Удалить</button>
+                </div>
+            `).join('');
+            modal.style.display = 'block';
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            showCart();
+            updateCartCount();
+        }
+
+        function closeCart() { document.getElementById('cart-modal').style.display = 'none'; }
+        function showForm() { closeCart(); document.getElementById('order-form').style.display = 'block'; }
+        function closeForm() { document.getElementById('order-form').style.display = 'none'; }
+
+        function submitOrder() {
+            const name = document.getElementById('name').value.trim();
+            const address = document.getElementById('address').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            if (!name || !address || !phone) return alert('Заполните обязательные поля!');
+
+            const orderData = {
+                items: cart,
+                customer: {
+                    name,
+                    address,
+                    phone,
+                    telegram: document.getElementById('telegram').value.trim(),
+                    comments: document.getElementById('comments').value.trim()
+                },
+                total: cart.reduce((sum, item) => sum + item.price, 0)
+            };
+
+            if (window.Telegram?.WebApp) {
+                Telegram.WebApp.sendData(JSON.stringify(orderData));
+                Telegram.WebApp.close();
+            } else {
+                console.log('Тестовый заказ:', orderData);
+                alert('Заказ отправлен (в реальном приложении данные уйдут боту)');
+            }
+        }
+
+        window.onload = () => {
+            renderProducts();
+            if (window.Telegram?.WebApp) {
+                Telegram.WebApp.ready();
+                Telegram.WebApp.expand();
+            }
+        };
+    </script>
+</body>
+</html>
